@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import { ENV } from '@/lib/env';
 
 // Dynamic import for Spline (client-side only)
 const Spline = dynamic(() => import('@splinetool/react-spline'), {
@@ -23,7 +24,11 @@ export default function Hero3D() {
       {/* 3D Scene */}
       <div className="absolute inset-0 opacity-60">
         <Suspense fallback={<div className="w-full h-full bg-bg-light" />}>
-          <Spline scene="https://prod.spline.design/YOUR_SCENE_ID/scene.splinecode" />
+          {ENV.SPLINE_SCENE_ID ? (
+            <Spline scene={`https://prod.spline.design/${ENV.SPLINE_SCENE_ID}/scene.splinecode`} />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-purple-900/20 to-pink-900/20 animate-pulse" />
+          )}
         </Suspense>
       </div>
 

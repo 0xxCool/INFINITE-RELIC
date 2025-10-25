@@ -1,10 +1,11 @@
 import { arbitrumSepolia, arbitrum } from 'wagmi/chains';
+import { ENV } from './env';
 
 export const CONTRACTS = {
-  VAULT: process.env.NEXT_PUBLIC_VAULT_ADDR as `0x${string}`,
-  USDC: process.env.NEXT_PUBLIC_USDC_ADDR as `0x${string}`,
-  RELIC_NFT: process.env.NEXT_PUBLIC_RELIC_NFT_ADDR as `0x${string}`,
-  YIELD_TOKEN: process.env.NEXT_PUBLIC_YIELD_TOKEN_ADDR as `0x${string}`,
+  VAULT: ENV.VAULT_ADDRESS,
+  USDC: ENV.USDC_ADDRESS,
+  RELIC_NFT: ENV.NFT_ADDRESS,
+  YIELD_TOKEN: ENV.YIELD_TOKEN_ADDRESS,
 } as const;
 
 export const CHAINS = {
