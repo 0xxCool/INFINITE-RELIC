@@ -1,13 +1,17 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import TelegramBot from 'node-telegram-bot-api';
 import { PrismaService } from '../prisma/prisma.service';
+import { AIService } from '../ai/ai.service';
 import { randomBytes } from 'crypto';
 
 @Injectable()
 export class BotService implements OnModuleInit {
   private bot: TelegramBot;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private ai: AIService
+  ) {}
 
   onModuleInit() {
     const token = process.env.TG_TOKEN;
@@ -48,10 +52,17 @@ export class BotService implements OnModuleInit {
       const miniAppUrl = process.env.MINI_APP_URL || 'https://relic-chain.io';
       const refLink = `https://t.me/${this.bot.options.username}?start=${user.referralCode}`;
 
+      // Generate AI-powered welcome message for new users
+      let welcomeText: string;
+      if (!user.createdAt || Date.now() - user.createdAt.getTime() < 60000) {
+        welcomeText = await this.ai.generateWelcomeMessage(firstName);
+      } else {
+        welcomeText = `Welcome back, ${firstName}! 👋`;
+      }
+
       await this.bot.sendMessage(
         msg.chat.id,
-        `🏛️ *Welcome to Infinite Relic!*\n\n` +
-        `Earn 5-25% APR on RWA-backed NFTs.\n\n` +
+        `${welcomeText}\n\n` +
         `🎁 Your Referral Link:\n\`${refLink}\`\n\n` +
         `Open the app to start earning:`,
         {
@@ -98,9 +109,28 @@ export class BotService implements OnModuleInit {
         `/balance - Check your balance\n` +
         `/quest - View available quests\n` +
         `/referral - Get your referral link\n` +
+        `/ask - Ask AI about the protocol\n` +
         `/help - Show this help`,
         { parse_mode: 'Markdown' }
       );
+    });
+
+    // /ask command - AI-powered Q&A
+    this.bot.onText(/\/ask (.+)/, async (msg, match) => {
+      const question = match?.[1];
+      if (!question) {
+        await this.bot.sendMessage(
+          msg.chat.id,
+          'Please provide a question. Example: /ask How does the yield work?'
+        );
+        return;
+      }
+
+      // Show typing indicator
+      await this.bot.sendChatAction(msg.chat.id, 'typing');
+
+      const answer = await this.ai.answerQuestion(question);
+      await this.bot.sendMessage(msg.chat.id, answer);
     });
 
     // Callback queries

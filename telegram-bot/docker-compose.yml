@@ -48,6 +48,20 @@ services:
       - /app/node_modules
     restart: unless-stopped
 
+  mini:
+    build:
+      context: ./apps/mini
+      dockerfile: Dockerfile
+    env_file:
+      - ./apps/mini/.env
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./apps/mini:/app
+      - /app/node_modules
+      - /app/.svelte-kit
+    restart: unless-stopped
+
   # Monitoring (optional)
   prometheus:
     image: prom/prometheus:v2.52.0
