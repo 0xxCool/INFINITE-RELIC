@@ -4,6 +4,7 @@ import { useAccount, useReadContract } from 'wagmi';
 import { CONTRACTS } from '@/lib/config';
 import { NFT_ABI, YIELD_ABI } from '@/lib/abis';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import RelicCard from '@/components/RelicCard';
 
 export default function Dashboard() {
   const { address, isConnected } = useAccount();
@@ -70,14 +71,30 @@ export default function Dashboard() {
       </div>
 
       {/* Relics List */}
-      <div className="card">
+      <div>
         <h2 className="text-2xl font-bold mb-6">Your Relics</h2>
         {nftBalance && Number(nftBalance) > 0 ? (
-          <div className="text-gray-400">
-            You own {Number(nftBalance)} Relic{Number(nftBalance) > 1 ? 's' : ''}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: Number(nftBalance) }).map((_, index) => {
+              // Get tokenId by index
+              const { data: tokenId } = useReadContract({
+                address: CONTRACTS.RELIC_NFT,
+                abi: NFT_ABI,
+                functionName: 'tokenOfOwnerByIndex',
+                args: address ? [address, BigInt(index)] : undefined,
+              });
+
+              return tokenId !== undefined ? (
+                <RelicCard key={tokenId.toString()} tokenId={tokenId} />
+              ) : (
+                <div key={index} className="card animate-pulse">
+                  <div className="h-48 bg-bg-light/50 rounded-xl"></div>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <div className="text-center py-12 text-gray-400">
+          <div className="card text-center py-12 text-gray-400">
             <p className="mb-4">You don't own any Relics yet</p>
             <a href="/#mint" className="btn-primary">
               Mint Your First Relic →
