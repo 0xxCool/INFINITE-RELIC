@@ -4,6 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { BotModule } from './bot/bot.module';
 import { QuestModule } from './quest/quest.module';
 import { AIModule } from './ai/ai.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AIModule } from './ai/ai.module';
     BotModule,
     QuestModule,
     AIModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}
