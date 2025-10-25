@@ -55,13 +55,26 @@ async function main() {
   console.log("✅ RelicVault deployed to:", vaultAddress);
   console.log();
 
-  // 6. Transfer ownership to vault
+  // 6. Transfer ownership to vault (CRITICAL for YieldToken minting)
   console.log("🔑 Transferring ownership...");
-  await nft.transferOwnership(vaultAddress);
-  console.log("✅ RelicNFT ownership transferred to Vault");
 
-  await yieldToken.transferOwnership(vaultAddress);
-  console.log("✅ YieldToken ownership transferred to Vault");
+  // Transfer NFT ownership
+  let tx = await nft.transferOwnership(vaultAddress);
+  await tx.wait();
+  const nftOwner = await nft.owner();
+  if (nftOwner !== vaultAddress) {
+    throw new Error("RelicNFT ownership transfer failed!");
+  }
+  console.log("✅ RelicNFT ownership transferred to Vault (verified)");
+
+  // Transfer YieldToken ownership (CRITICAL - Vault must mint yield tokens)
+  tx = await yieldToken.transferOwnership(vaultAddress);
+  await tx.wait();
+  const yieldOwner = await yieldToken.owner();
+  if (yieldOwner !== vaultAddress) {
+    throw new Error("YieldToken ownership transfer failed!");
+  }
+  console.log("✅ YieldToken ownership transferred to Vault (verified)");
   console.log();
 
   // 7. Summary

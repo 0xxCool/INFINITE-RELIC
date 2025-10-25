@@ -13,12 +13,15 @@
 	};
 
 	let loading = true;
+	let error = '';
 
 	onMount(async () => {
 		try {
 			stats = await getUserStats();
-		} catch (error) {
-			console.error('Failed to load stats:', error);
+			error = '';
+		} catch (err) {
+			console.error('Failed to load stats:', err);
+			error = 'Failed to load your stats. Please try refreshing the app.';
 		} finally {
 			loading = false;
 		}
@@ -45,8 +48,15 @@
 		</p>
 	</div>
 
+	<!-- Error Message -->
+	{#if error}
+		<div class="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+			<p class="text-sm text-red-300 text-center">⚠️ {error}</p>
+		</div>
+	{/if}
+
 	<!-- Stats Cards -->
-	{#if !loading}
+	{#if !loading && !error}
 		<div class="grid grid-cols-2 gap-4 mb-8">
 			<div class="card">
 				<p class="text-gray-400 text-sm">Total Earned</p>
@@ -61,7 +71,7 @@
 				<p class="text-2xl font-bold text-relic-blue">{stats.questsCompleted}</p>
 			</div>
 		</div>
-	{:else}
+	{:else if loading}
 		<div class="grid grid-cols-2 gap-4 mb-8">
 			<div class="card animate-pulse">
 				<div class="h-4 bg-white/10 rounded w-20 mb-2"></div>

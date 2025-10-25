@@ -8,12 +8,14 @@ import { User, Relic, Claim, Protocol } from '../generated/schema';
 export function handleRelicMinted(event: RelicMinted): void {
   // Load or create user
   let user = User.load(event.params.user.toHex());
+  let isNewUser = false;
   if (!user) {
     user = new User(event.params.user.toHex());
     user.totalPrincipal = BigInt.fromI32(0);
     user.totalYieldClaimed = BigInt.fromI32(0);
     user.relicCount = 0;
     user.createdAt = event.block.timestamp;
+    isNewUser = true;
   }
   user.totalPrincipal = user.totalPrincipal.plus(event.params.principal);
   user.relicCount = user.relicCount + 1;
@@ -37,6 +39,12 @@ export function handleRelicMinted(event: RelicMinted): void {
   let protocol = getOrCreateProtocol();
   protocol.totalRelics = protocol.totalRelics + 1;
   protocol.totalPrincipal = protocol.totalPrincipal.plus(event.params.principal);
+
+  // Increment unique users counter if this is a new user
+  if (isNewUser) {
+    protocol.uniqueUsers = protocol.uniqueUsers + 1;
+  }
+
   protocol.updatedAt = event.block.timestamp;
   protocol.save();
 }
