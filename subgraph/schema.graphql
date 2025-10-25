@@ -1,0 +1,40 @@
+type User @entity {
+  id: ID!                     # Ethereum address
+  relics: [Relic!]! @derivedFrom(field: "owner")
+  claims: [Claim!]! @derivedFrom(field: "user")
+  totalPrincipal: BigInt!
+  totalYieldClaimed: BigInt!
+  relicCount: Int!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type Relic @entity {
+  id: ID!                     # tokenId
+  owner: User!
+  principal: BigInt!
+  lockDays: Int!
+  lockEnd: BigInt!
+  mintedAt: BigInt!
+  claims: [Claim!]! @derivedFrom(field: "relic")
+  totalYieldClaimed: BigInt!
+  claimCount: Int!
+}
+
+type Claim @entity {
+  id: ID!                     # txHash-logIndex
+  user: User!
+  relic: Relic!
+  amount: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type Protocol @entity {
+  id: ID!                     # "protocol"
+  totalRelics: Int!
+  totalPrincipal: BigInt!
+  totalYieldClaimed: BigInt!
+  uniqueUsers: Int!
+  updatedAt: BigInt!
+}

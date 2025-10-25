@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id  // Telegram user ID
+  username      String?
+  firstName     String
+  referralCode  String   @unique
+  referredBy    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  quests        Quest[]
+  claims        Claim[]
+  referrals     User[]   @relation("Referrals")
+  referrer      User?    @relation("Referrals", fields: [referredBy], references: [id])
+}
+
+model Quest {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  type        QuestType
+  status      QuestStatus @default(AVAILABLE)
+  payload     Json?
+  cooldownEnd DateTime
+  reward      Float    // Extra YIELD tokens
+  createdAt   DateTime @default(now())
+  claimedAt   DateTime?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model Claim {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  amount    Float
+  txHash    String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum QuestType {
+  DAILY_CHECKIN
+  SHARE_TWITTER
+  REFERRAL_3
+  COMPOUND_3
+  EXIT_WARNING
+}
+
+enum QuestStatus {
+  AVAILABLE
+  CLAIMED
+  EXPIRED
+}

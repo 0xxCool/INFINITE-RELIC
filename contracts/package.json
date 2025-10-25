@@ -1,0 +1,26 @@
+{
+  "name": "relic-contracts",
+  "version": "0.1.0",
+  "description": "Infinite Relic Smart Contracts - RWA-backed NFT Yield System",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network arbSepolia",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network arbitrumOne",
+    "verify": "hardhat verify",
+    "clean": "hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.5",
+    "@typechain/hardhat": "^9.1.0",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
+    "dotenv": "^16.4.5"
+  }
+}

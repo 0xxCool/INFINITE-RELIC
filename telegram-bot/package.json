@@ -1,0 +1,19 @@
+{
+  "name": "relic-telegram-bot",
+  "version": "0.1.0",
+  "description": "Infinite Relic AI-powered Telegram Bot",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "bot:dev": "cd apps/bot && npm run start:dev",
+    "bot:build": "cd apps/bot && npm run build",
+    "bot:start": "cd apps/bot && npm run start:prod",
+    "mini:dev": "cd apps/mini && npm run dev",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  }
+}
