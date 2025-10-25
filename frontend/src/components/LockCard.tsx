@@ -1,11 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits } from 'viem';
 import { CONTRACTS, MIN_DEPOSIT } from '@/lib/config';
 import { VAULT_ABI, USDC_ABI } from '@/lib/abis';
+import { useToast } from '@/lib/toast-context';
 
 interface LockCardProps {
   days: number;
@@ -26,6 +27,7 @@ export default function LockCard({
 }: LockCardProps) {
   const [amount, setAmount] = useState(MIN_DEPOSIT.toString());
   const { address } = useAccount();
+  const { showToast } = useToast();
 
   // Check USDC balance
   const { data: usdcBalance } = useReadContract({
@@ -44,16 +46,43 @@ export default function LockCard({
   });
 
   // Approve USDC
-  const { writeContract: approve, data: approveHash } = useWriteContract();
-  const { isLoading: isApproving } = useWaitForTransactionReceipt({
+  const { writeContract: approve, data: approveHash, error: approveError } = useWriteContract();
+  const { isLoading: isApproving, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
   });
 
   // Mint Relic
-  const { writeContract: mint, data: mintHash } = useWriteContract();
-  const { isLoading: isMinting } = useWaitForTransactionReceipt({
+  const { writeContract: mint, data: mintHash, error: mintError } = useWriteContract();
+  const { isLoading: isMinting, isSuccess: isMintSuccess } = useWaitForTransactionReceipt({
     hash: mintHash,
   });
+
+  // Handle approve transaction status
+  useEffect(() => {
+    if (isApproveSuccess) {
+      showToast('✅ USDC approved! You can now mint your Relic.', 'success');
+    }
+  }, [isApproveSuccess]);
+
+  useEffect(() => {
+    if (approveError) {
+      showToast(`❌ Approval failed: ${approveError.message.slice(0, 100)}`, 'error');
+    }
+  }, [approveError]);
+
+  // Handle mint transaction status
+  useEffect(() => {
+    if (isMintSuccess) {
+      showToast(`✅ ${trait} Relic successfully minted! Check your dashboard.`, 'success', 7000);
+      setAmount(MIN_DEPOSIT.toString()); // Reset amount
+    }
+  }, [isMintSuccess, trait]);
+
+  useEffect(() => {
+    if (mintError) {
+      showToast(`❌ Minting failed: ${mintError.message.slice(0, 100)}`, 'error');
+    }
+  }, [mintError]);
 
   const needsApproval = () => {
     if (!allowance || !amount) return true;
@@ -63,22 +92,32 @@ export default function LockCard({
 
   const handleApprove = () => {
     if (!amount) return;
-    approve({
-      address: CONTRACTS.USDC,
-      abi: USDC_ABI,
-      functionName: 'approve',
-      args: [CONTRACTS.VAULT, parseUnits(amount, 6)],
-    });
+    try {
+      approve({
+        address: CONTRACTS.USDC,
+        abi: USDC_ABI,
+        functionName: 'approve',
+        args: [CONTRACTS.VAULT, parseUnits(amount, 6)],
+      });
+      showToast('🔄 Approval transaction submitted...', 'info');
+    } catch (error) {
+      console.error('Approve error:', error);
+    }
   };
 
   const handleMint = () => {
     if (!amount) return;
-    mint({
-      address: CONTRACTS.VAULT,
-      abi: VAULT_ABI,
-      functionName: 'mintRelic',
-      args: [days, parseUnits(amount, 6)],
-    });
+    try {
+      mint({
+        address: CONTRACTS.VAULT,
+        abi: VAULT_ABI,
+        functionName: 'mintRelic',
+        args: [days, parseUnits(amount, 6)],
+      });
+      showToast('🔄 Minting transaction submitted...', 'info');
+    } catch (error) {
+      console.error('Mint error:', error);
+    }
   };
 
   const maxAPR = baseAPR + boostCap;
