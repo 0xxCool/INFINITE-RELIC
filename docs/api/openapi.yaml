@@ -1,0 +1,572 @@
+openapi: 3.0.3
+info:
+  title: INFINITE RELIC API
+  description: |
+    REST API for the INFINITE RELIC Telegram Mini-App backend.
+
+    ## Authentication
+    All endpoints require Telegram WebApp authentication via the `x-telegram-init-data` header.
+    The init data is validated using HMAC-SHA256 signature verification.
+
+    ## Rate Limiting
+    - **Rate Limit**: 100 requests per 15 minutes per IP address
+    - **Response Headers**:
+      - `X-RateLimit-Limit`: Maximum requests allowed
+      - `X-RateLimit-Remaining`: Requests remaining in current window
+      - `X-RateLimit-Reset`: Timestamp when the rate limit resets
+
+    ## Error Handling
+    The API uses standard HTTP status codes:
+    - `200`: Success
+    - `400`: Bad Request - Invalid input
+    - `401`: Unauthorized - Missing or invalid authentication
+    - `404`: Not Found - Resource doesn't exist
+    - `429`: Too Many Requests - Rate limit exceeded
+    - `500`: Internal Server Error
+
+    All error responses include a JSON body with `statusCode`, `message`, and optional `error` fields.
+
+  version: 1.0.0
+  contact:
+    name: INFINITE RELIC Team
+    url: https://relic-chain.io
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.relic-chain.io/v1
+    description: Production server
+  - url: http://localhost:3000
+    description: Local development server
+
+tags:
+  - name: User
+    description: User profile and statistics endpoints
+  - name: Quests
+    description: Daily quests and rewards management
+  - name: Claims
+    description: Yield claim tracking and history
+
+security:
+  - TelegramAuth: []
+
+paths:
+  /user/{userId}/stats:
+    get:
+      tags:
+        - User
+      summary: Get user statistics
+      description: Retrieve comprehensive statistics for a specific user including quests, earnings, and referrals
+      operationId: getUserStats
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Telegram user ID
+          schema:
+            type: string
+            example: "123456789"
+      responses:
+        '200':
+          description: User statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStats'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                statusCode: 404
+                message: "User 123456789 not found"
+                error: "Not Found"
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /user/{userId}/referral-link:
+    get:
+      tags:
+        - User
+      summary: Get user referral link
+      description: Generate and retrieve the user's unique referral link for inviting friends
+      operationId: getReferralLink
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Telegram user ID
+          schema:
+            type: string
+            example: "123456789"
+      responses:
+        '200':
+          description: Referral link retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralLink'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /quests:
+    get:
+      tags:
+        - Quests
+      summary: Get available quests
+      description: Retrieve all available quests for a specific user that haven't expired
+      operationId: getAvailableQuests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  description: Telegram user ID
+                  example: "123456789"
+              required:
+                - userId
+      responses:
+        '200':
+          description: List of available quests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Quest'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /quests/{id}/claim:
+    post:
+      tags:
+        - Quests
+      summary: Claim a quest reward
+      description: Claim the reward for a completed quest. Marks the quest as claimed and creates a claim record.
+      operationId: claimQuest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Quest ID
+          schema:
+            type: integer
+            example: 42
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  description: Telegram user ID
+                  example: "123456789"
+              required:
+                - userId
+      responses:
+        '200':
+          description: Quest claimed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimQuestResponse'
+        '400':
+          description: Quest not available or already claimed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                alreadyClaimed:
+                  value:
+                    statusCode: 400
+                    message: "Quest not found or already claimed"
+                    error: "Bad Request"
+                expired:
+                  value:
+                    statusCode: 400
+                    message: "Quest expired"
+                    error: "Bad Request"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /claims:
+    get:
+      tags:
+        - Claims
+      summary: Get claim history
+      description: Retrieve claim history, optionally filtered by user ID. Returns up to 100 most recent claims.
+      operationId: getClaims
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          description: Filter claims by user ID
+          schema:
+            type: string
+            example: "123456789"
+      responses:
+        '200':
+          description: Claims retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+    post:
+      tags:
+        - Claims
+      summary: Create a new claim record
+      description: Record a new yield claim from the blockchain
+      operationId: createClaim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClaimDto'
+      responses:
+        '200':
+          description: Claim created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateClaimResponse'
+        '400':
+          description: Invalid input or user not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+components:
+  securitySchemes:
+    TelegramAuth:
+      type: apiKey
+      in: header
+      name: x-telegram-init-data
+      description: |
+        Telegram WebApp initialization data.
+
+        The server validates this using HMAC-SHA256 signature verification:
+        1. Parse the init data as URL parameters
+        2. Extract the `hash` parameter
+        3. Create data-check-string from remaining parameters (sorted alphabetically)
+        4. Calculate secret key: HMAC-SHA256("WebAppData", BOT_TOKEN)
+        5. Calculate hash: HMAC-SHA256(data-check-string, secret_key)
+        6. Compare calculated hash with provided hash
+
+        Example: `query_id=AAH...&user={"id":123456789,...}&auth_date=1234567890&hash=abc123...`
+
+  schemas:
+    UserStats:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: Telegram user ID
+          example: "123456789"
+        username:
+          type: string
+          nullable: true
+          description: Telegram username
+          example: "johndoe"
+        firstName:
+          type: string
+          description: User's first name
+          example: "John"
+        createdAt:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+          example: "2024-01-15T10:30:00.000Z"
+        stats:
+          type: object
+          properties:
+            totalQuests:
+              type: integer
+              description: Total number of quests received
+              example: 50
+            completedQuests:
+              type: integer
+              description: Number of quests claimed
+              example: 35
+            totalEarned:
+              type: number
+              format: float
+              description: Total $YIELD tokens earned
+              example: 125.5
+            referralCount:
+              type: integer
+              description: Number of successful referrals
+              example: 7
+            referralCode:
+              type: string
+              description: User's unique referral code
+              example: "REL-ABC123"
+
+    ReferralLink:
+      type: object
+      properties:
+        referralCode:
+          type: string
+          description: User's unique referral code
+          example: "REL-ABC123"
+        referralLink:
+          type: string
+          format: uri
+          description: Complete Telegram bot referral link
+          example: "https://t.me/infiniterelic_bot?start=REL-ABC123"
+
+    Quest:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Quest ID
+          example: 42
+        userId:
+          type: string
+          description: User ID this quest belongs to
+          example: "123456789"
+        type:
+          type: string
+          enum:
+            - DAILY_CHECKIN
+            - REFERRAL
+            - TRADING
+            - SOCIAL
+          description: Type of quest
+          example: "DAILY_CHECKIN"
+        reward:
+          type: number
+          format: float
+          description: Reward amount in $YIELD tokens
+          example: 0.5
+        status:
+          type: string
+          enum:
+            - AVAILABLE
+            - CLAIMED
+            - EXPIRED
+          description: Current quest status
+          example: "AVAILABLE"
+        cooldownEnd:
+          type: string
+          format: date-time
+          description: Timestamp when quest expires
+          example: "2024-01-16T09:00:00.000Z"
+        createdAt:
+          type: string
+          format: date-time
+          description: Quest creation timestamp
+          example: "2024-01-15T09:00:00.000Z"
+        claimedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when quest was claimed
+          example: null
+
+    ClaimQuestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the claim was successful
+          example: true
+        reward:
+          type: number
+          format: float
+          description: Amount of $YIELD tokens claimed
+          example: 0.5
+        message:
+          type: string
+          description: Success message
+          example: "Successfully claimed 0.5 $YIELD"
+
+    Claim:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Claim ID
+          example: 123
+        userId:
+          type: string
+          description: User ID who made the claim
+          example: "123456789"
+        amount:
+          type: number
+          format: float
+          description: Amount claimed in $YIELD tokens
+          example: 25.5
+        txHash:
+          type: string
+          nullable: true
+          description: Blockchain transaction hash
+          example: "0x1234567890abcdef..."
+        createdAt:
+          type: string
+          format: date-time
+          description: Claim creation timestamp
+          example: "2024-01-15T14:30:00.000Z"
+        user:
+          type: object
+          description: User information
+          properties:
+            id:
+              type: string
+              example: "123456789"
+            username:
+              type: string
+              nullable: true
+              example: "johndoe"
+            firstName:
+              type: string
+              example: "John"
+
+    ClaimsResponse:
+      type: object
+      properties:
+        claims:
+          type: array
+          items:
+            $ref: '#/components/schemas/Claim'
+        total:
+          type: integer
+          description: Number of claims returned
+          example: 25
+        totalAmount:
+          type: number
+          format: float
+          description: Sum of all claim amounts
+          example: 567.5
+
+    CreateClaimDto:
+      type: object
+      required:
+        - userId
+        - amount
+      properties:
+        userId:
+          type: string
+          description: Telegram user ID
+          example: "123456789"
+        amount:
+          type: number
+          format: float
+          description: Amount claimed in $YIELD tokens
+          example: 25.5
+          minimum: 0
+        txHash:
+          type: string
+          description: Blockchain transaction hash (optional)
+          example: "0x1234567890abcdef..."
+
+    CreateClaimResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the claim was created successfully
+          example: true
+        claim:
+          $ref: '#/components/schemas/Claim'
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        message:
+          type: string
+          description: Error message
+          example: "Invalid request"
+        error:
+          type: string
+          description: Error type
+          example: "Bad Request"
+
+  responses:
+    UnauthorizedError:
+      description: Authentication failed or missing
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+          description: Authentication method required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            statusCode: 401
+            message: "Invalid Telegram authentication"
+            error: "Unauthorized"
+
+    RateLimitError:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Maximum requests per window
+          example: 100
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Requests remaining
+          example: 0
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+          example: 1705329600
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds until rate limit reset
+          example: 420
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            statusCode: 429
+            message: "Too many requests from this IP"
+            error: "Too Many Requests"
+            retryAfter: 420
